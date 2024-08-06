@@ -1,0 +1,83 @@
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch } from "../appLogic/store";
+import { selectAuthToken, selectIsLoggedIn, selectAuthError } from "../appLogic/reducers/AuthSlice";
+import { useNavigate } from "react-router-dom";
+import { getUserToken } from "../appLogic/useCases/getUserToken";
+import { clearError } from "../appLogic/reducers/ProfilSlice";
+import React from "react";
+
+export function SignIn() {
+    const [authValues, setAuthValues] = useState({ email: '', password: '' });
+    const [isChecked, setIsChecked] = useState(false);
+    const error = useSelector(selectAuthError);
+    const token = useSelector(selectAuthToken);
+    const navigate = useNavigate();
+    const dispatch = useDispatch<AppDispatch>();
+    const isLoggedIn = useSelector(selectIsLoggedIn);
+
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        dispatch(clearError());
+        try {
+            await dispatch(getUserToken(authValues)).unwrap();
+        } catch (err: any) {
+            console.error(err)
+        }
+    }
+
+    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value } = event.target;
+        setAuthValues(prevValues => ({
+            ...prevValues,
+            [name]: value,
+        }));
+    };
+
+    useEffect(() => {
+        if (token && isLoggedIn) {
+            navigate('/profile');
+        }
+    }, [token, isLoggedIn, navigate]);
+
+    const handleCheckbox = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.checked){
+            localStorage.setItem('email', authValues.email);
+            setIsChecked(true);
+        } else {
+            localStorage.removeItem('email');
+            setIsChecked(false);
+        }
+    }
+
+    useEffect(() => {
+        const storedEmail = localStorage.getItem('email');
+        if (storedEmail) {
+            setAuthValues({ email: storedEmail, password: '' });
+            setIsChecked(true);
+        }
+    }, []);    
+
+    return (<main className="main bg-dark">
+        <section className="signin__content">
+            <i className="fa fa-user-circle signin__icon"></i>
+            <h1>Sign In</h1>
+            <form onSubmit={handleSubmit}>
+                <div className="input__wrapper">
+                    <label htmlFor="username">Username</label>
+                    <input type="text" id="username" name='email' value={authValues.email} onChange={handleChange} />
+                </div>
+                <div className="input__wrapper">
+                    <label htmlFor="password">Password</label>
+                    <input type="password" id="password" name='password' value={authValues.password} onChange={handleChange} />
+                </div>
+                <div className="input__remember">
+                    <input type="checkbox" id="remember-me" onChange={handleCheckbox} checked={isChecked}/>
+                    <label htmlFor="remember-me">Remember me</label>
+                </div>
+                {error && <p style={{ color: 'red' }}>{error}</p>}
+                <button className="signin__button">Sign In</button>
+            </form>
+        </section>
+    </main>);
+}
